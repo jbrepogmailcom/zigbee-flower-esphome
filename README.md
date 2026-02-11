@@ -1,4 +1,4 @@
-# ESPHome Zigbee Flower Monitor (XIAO nRF52840 + VL53L0X)
+# ESPHome Zigbee Laser Flower Monitor (XIAO nRF52840 + VL53L0X)
 
 This project publishes:
 - distance (mm)
@@ -55,7 +55,7 @@ mosquitto_pub -h <MQTT_HOST> -u <MQTT_USER> -P <MQTT_PASS> \
 ## Known limitation (power)
 With current ESPHome Zigbee implementation, this setup was measured around **~10 mA** average, not ultra-low-power SED levels. There is still room for improvement when sleepy end-device behavior is improved upstream.
 
-For an ultra-low-power reference (about 6 months per charge), see:
+For an ultra-low-power reference (about 6 months per charge), see the MQTT/Wi-Fi version:
 https://github.com/jbrepogmailcom/flower-fading-monitor
 
 ## Home Assistant hint
