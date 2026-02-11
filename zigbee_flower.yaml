@@ -1,0 +1,148 @@
+substitutions:
+  measure_interval: 4h
+  logger_baud: "115200"
+
+esphome:
+  name: nrf52840-zigbee-tof
+  friendly_name: nRF52840 Zigbee ToF
+  on_boot:
+    priority: -100
+    then:
+      - output.turn_on: led_red
+      - output.turn_off: led_green
+      - output.turn_off: led_blue
+      - delay: 200ms
+      - output.turn_off: led_red
+      - output.turn_on: led_green
+      - output.turn_off: led_blue
+      - delay: 200ms
+      - output.turn_off: led_red
+      - output.turn_off: led_green
+      - output.turn_on: led_blue
+      - delay: 200ms
+      - output.turn_off: led_red
+      - output.turn_off: led_green
+      - output.turn_off: led_blue
+
+nrf52:
+  board: xiao_ble
+
+logger:
+  baud_rate: ${logger_baud}
+  level: DEBUG
+
+zigbee:
+  power_source: BATTERY
+  wipe_on_boot: false
+
+preferences:
+  flash_write_interval: never
+
+output:
+  - platform: gpio
+    id: led_red
+    pin:
+      number: P0.26
+      inverted: true
+  - platform: gpio
+    id: led_green
+    pin:
+      number: P0.30
+      inverted: true
+  - platform: gpio
+    id: led_blue
+    pin:
+      number: P0.06
+      inverted: true
+
+globals:
+  - id: first_measure_done
+    type: bool
+    restore_value: no
+    initial_value: "false"
+
+i2c:
+  sda: P1.13
+  scl: P1.14
+  scan: false
+  frequency: 100kHz
+
+sensor:
+  - platform: vl53l0x
+    id: tof
+    name: "Distance"
+    address: 0x29
+    timing_budget: 50ms
+    timeout: 100ms
+    unit_of_measurement: "mm"
+    accuracy_decimals: 1
+    update_interval: never
+    filters:
+      - multiply: 1000.0
+      - sliding_window_moving_average:
+          window_size: 5
+          send_every: 5
+          send_first_at: 5
+
+  - platform: adc
+    id: batt_v_raw
+    pin: P0.02
+    update_interval: never
+
+  - platform: template
+    id: batt_v
+    name: "Battery_Voltage"
+    unit_of_measurement: "V"
+    update_interval: never
+    lambda: |-
+      return id(batt_v_raw).state * 6.6327;
+
+  - platform: template
+    id: batt_pct
+    name: "Battery"
+    unit_of_measurement: "%"
+    update_interval: never
+    lambda: |-
+      float v = id(batt_v).state;
+      float pct = (v - 2.2f) / (3.0f - 2.2f) * 100.0f;
+      if (pct < 0.0f) pct = 0.0f;
+      if (pct > 100.0f) pct = 100.0f;
+      return pct;
+
+script:
+  - id: measure_and_report
+    mode: queued
+    then:
+      - component.update: batt_v_raw
+      - component.update: batt_v
+      - component.update: batt_pct
+      - component.update: tof
+      - delay: 250ms
+      - component.update: tof
+      - delay: 250ms
+      - component.update: tof
+      - delay: 250ms
+      - component.update: tof
+      - delay: 250ms
+      - component.update: tof
+
+interval:
+  - interval: 10s
+    then:
+      - if:
+          condition:
+            lambda: "return zb_zdo_joined() && !id(first_measure_done);"
+          then:
+            - logger.log: "Joined detected - running first measurement now"
+            - script.execute: measure_and_report
+            - lambda: "id(first_measure_done) = true;"
+
+  - interval: ${measure_interval}
+    then:
+      - if:
+          condition:
+            lambda: "return zb_zdo_joined();"
+          then:
+            - script.execute: measure_and_report
+          else:
+            - logger.log: "Skipping measurement - Zigbee not joined yet"
