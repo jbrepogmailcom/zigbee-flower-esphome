@@ -55,5 +55,8 @@ mosquitto_pub -h <MQTT_HOST> -u <MQTT_USER> -P <MQTT_PASS> \
 ## Known limitation (power)
 With current ESPHome Zigbee implementation, this setup was measured around **~10 mA** average, not ultra-low-power SED levels. There is still room for improvement when sleepy end-device behavior is improved upstream.
 
+For an ultra-low-power reference (about 6 months per charge), see:
+https://github.com/jbrepogmailcom/flower-fading-monitor
+
 ## Home Assistant hint
 `distance` can be used for automation, e.g. trigger alert when flower leaves are dropping too fast.
