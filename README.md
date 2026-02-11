@@ -16,12 +16,15 @@ I2C pins used here:
 - `SCL: P1.14`
 
 ## ESPHome file
-Main firmware config:
+Main firmware config (master):
+- `zigbee_flower-lp.yaml`
+
+Compatibility copy:
 - `zigbee_flower.yaml`
 
 Compile example:
 ```bash
-esphome compile zigbee_flower.yaml
+esphome compile zigbee_flower-lp.yaml
 ```
 
 ## Zigbee2MQTT converter
