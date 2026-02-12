@@ -1,13 +1,28 @@
+# Boot/recovery notes for XIAO nRF52840 Sense:
+# - If app mode is unstable or not booting, reflash full bootloader+SoftDevice package:
+#   xiao_nrf52840_ble_sense_bootloader-0.8.3_s140_7.3.0.zip (via adafruit-nrfutil serial DFU).
+# - Confirm bootloader state in INFO_UF2.TXT:
+#   SoftDevice: S140 7.3.0
+# - After that, app mode should be active (bl=no) and serial ports should appear
+#   (typically /dev/ttyACM0 and /dev/ttyACM1).
+# - If logs are quiet, keep terminal open and press reset once; check both ACM ports.
+
 substitutions:
-  measure_interval: 2min
+  measure_interval: 4h
+  post_report_awake_time: 10s
   logger_baud: "115200"
 
 esphome:
   name: nrf52840-zigbee-tof
   friendly_name: nRF52840 Zigbee ToF
+  includes:
+    - radio_ctrl_shim.h
   on_boot:
     priority: -100
     then:
+      - lambda: |-
+          // Let Zigbee stack enter sleep whenever possible.
+          zb_sleep_set_threshold(0);
       - output.turn_on: led_red
       - output.turn_off: led_green
       - output.turn_off: led_blue
@@ -83,9 +98,9 @@ sensor:
     filters:
       - multiply: 1000.0
       - sliding_window_moving_average:
-          window_size: 5
-          send_every: 5
-          send_first_at: 5
+          window_size: 20
+          send_every: 20
+          send_first_at: 20
 
   # Baterie – příklad (uprav ADC pin, dělič a mapování napětí na %)
   - platform: adc
@@ -117,18 +132,16 @@ script:
   - id: measure_and_report
     mode: queued
     then:
+      - lambda: |-
+          esphome_radio_on_for_measurement();
       - component.update: batt_v_raw
       - component.update: batt_v
       - component.update: batt_pct
-      - component.update: tof
-      - delay: 250ms
-      - component.update: tof
-      - delay: 250ms
-      - component.update: tof
-      - delay: 250ms
-      - component.update: tof
-      - delay: 250ms
-      - component.update: tof
+      - repeat:
+          count: 20
+          then:
+            - component.update: tof
+            - delay: 100ms
 
 # Jedno merici okno: baterie + ToF (jen po pripojeni do Zigbee site)
 interval:
@@ -141,6 +154,11 @@ interval:
             - logger.log: "Joined detected - running first measurement now"
             - script.execute: measure_and_report
             - lambda: "id(first_measure_done) = true;"
+            - delay: ${post_report_awake_time}
+            - lambda: |-
+                esphome_radio_off_force();
+            - lambda: |-
+                esphome_uart_off_force();
 
   - interval: ${measure_interval}
     then:
@@ -149,5 +167,10 @@ interval:
             lambda: "return zb_zdo_joined();"
           then:
             - script.execute: measure_and_report
+            - delay: ${post_report_awake_time}
+            - lambda: |-
+                esphome_radio_off_force();
+            - lambda: |-
+                esphome_uart_off_force();
           else:
             - logger.log: "Skipping measurement - Zigbee not joined yet"

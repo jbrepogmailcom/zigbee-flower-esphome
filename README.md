@@ -53,9 +53,9 @@ mosquitto_pub -h <MQTT_HOST> -u <MQTT_USER> -P <MQTT_PASS> \
 ```
 
 ## Known limitation (power)
-With current ESPHome Zigbee implementation, this setup was measured around **~10 mA** average, not ultra-low-power SED levels. There is still room for improvement when sleepy end-device behavior is improved upstream.
+With direct C-code power tweaks (radio + USB/UART handling), the measured current draw is about **~1.33 mA** on this XIAO nRF52840 board. In practice this seems to be the lowest stable level reached so far on this hardware with current ESPHome Zigbee support.
 
-For an ultra-low-power reference (about 6 months per charge), see the MQTT/Wi-Fi version:
+For an ultra-low-power reference (about 6 months per charge), see the MQTT/Wi-Fi (ESP32-C6) version, which still has lower drain:
 https://github.com/jbrepogmailcom/flower-fading-monitor
 
 ## Home Assistant hint
